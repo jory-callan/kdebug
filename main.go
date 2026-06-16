@@ -6,10 +6,10 @@ import (
 	"log"
 	"os"
 
-	"demo-go-tiny/src/use_echo"
-	"demo-go-tiny/src/use_gin"
-	"demo-go-tiny/src/use_http"
-	"demo-go-tiny/src/use_mux"
+	"kdebug/src/use_echo"
+	"kdebug/src/use_gin"
+	"kdebug/src/use_http"
+	"kdebug/src/use_mux"
 )
 
 func main() {

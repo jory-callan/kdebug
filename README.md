@@ -1,4 +1,4 @@
-# demo-go-tiny
+# kdebug
 
 一个超迷你、开箱即用的 Go HTTP 服务，专为 **K8s & APISIX** 功能验证设计。
 
@@ -33,8 +33,8 @@ go run main.go
 Dockerfile（多阶段构建，镜像 < 10 MB）
 
 ```bash
-docker build -t demo-go-tiny:1.0 .
-docker run -p 8080:8080 demo-go-tiny:1.0
+docker build -t kdebug:1.0 .
+docker run -p 8080:8080 kdebug:1.0
 ```
 
 ---
@@ -70,7 +70,7 @@ spec:
       hosts: [demo.local]
       paths: ["/*"]
     backends:
-    - serviceName: demo-go-tiny
+    - serviceName: kdebug
       servicePort: 80
     plugins:
     - name: limit-req

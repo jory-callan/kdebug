@@ -1,4 +1,4 @@
-module demo-go-tiny
+module kdebug
 
 go 1.24.5
 
