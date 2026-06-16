@@ -1,130 +1,113 @@
 # kdebug
 
-一个超迷你、开箱即用的 Go HTTP 服务，专为 **K8s & APISIX** 功能验证设计。
+> K8s debug pod — lightweight Go HTTP server for testing Kubernetes, APISIX, and network features.
+
+[![CI](https://github.com/jory-callan/kdebug/actions/workflows/ci.yml/badge.svg)](https://github.com/jory-callan/kdebug/actions/workflows/ci.yml)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/jory-callan/kdebug)](https://golang.org/dl/)
+[![Docker Pulls](https://img.shields.io/badge/docker-ghcr.io/jory--callan/kdebug-blue?logo=github)](https://github.com/jory-callan/kdebug/pkgs/container/kdebug)
+[![License](https://img.shields.io/github/license/jory-callan/kdebug)](LICENSE)
 
 ---
 
-## 一、特性速览
+## Endpoints
 
-| 接口 | 方法 | 描述 | 示例 |
-|---|---|---|---|
-| `/ping` | GET | 探活 | `curl http://demo.local/ping` |
-| `/echo` | GET/POST | 回显 Query + Body | `curl http://demo.local/echo -d hello=world` |
-| `/ip` | GET | 获取客户端真实 IP（兼容 X-Real-Ip / X-Forwarded-For） | `curl http://demo.local/ip` |
-| `/env` | GET | 查看 Pod 名称、节点名、版本、启动时间 | `curl http://demo.local/env` |
-| `/delay?ms=500` | GET | 模拟延迟（ms 可改） | `curl http://demo.local/delay?ms=500` |
-| `/mem?mb=100&ms=10000` | GET | 模拟内存占用（MB 可改，可设置保持时长ms） | `curl http://demo.local/mem?ms=20000&mb=100` |
-| `/cpu?ms=2000&cores=2&percent=80` | GET | 模拟CPU占用（可控制时间、核心数和占用百分比） | `curl http://demo.local/cpu?ms=5000&cores=1&percent=100` |
-| `/` | GET | 列出所有路由 | `curl http://demo.local/` |
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/ping` | GET | Health check → `{"code":0,"msg":"pong"}` |
+| `/echo` | GET/POST | Echo query, body & headers |
+| `/ip` | GET | Client real IP (respects X-Real-Ip / X-Forwarded-For) |
+| `/env` | GET | Pod name, node name, version, start time |
+| `/delay?ms=500` | GET | Simulate latency (default 100ms) |
+| `/mem?mb=100&ms=10000` | GET | RAM spike test (default 1MB for 2s) |
+| `/cpu?ms=5000&cores=2&percent=80` | GET | CPU burn test (default 2s, all cores, 80%) |
+| `/` | GET | List all available routes |
 
----
+## Quick Start
 
-## 二、本地运行
+**Local:**
+```bash
+go run .                          # default: echo framework
+go run . -c gin                   # gin framework
+go run . -c mux                   # gorilla/mux
+go run . -c http                  # net/http stdlib
+```
+
+**Docker:**
+```bash
+docker build -t kdebug .
+docker run -p 8080:8080 kdebug
+```
+
+**K8s:**
+```bash
+kubectl apply -f k8s/kdebug.yml
+```
+
+## Features
+
+- **4 frameworks in 1 binary**: echo (default), gin, gorilla/mux, net/http — switch with `-c`
+- **Sub-10MB image**: multi-stage Docker build, Alpine-based
+- **K8s native**: built-in liveness/readiness probes via `/ping`
+- **Network testing**: client IP detection, header echo, latency simulation
+- **Resource testing**: configurable CPU spikes and memory allocation
+- **Multiple frameworks**: same endpoints, same JSON response shape — compare frameworks side by side
+
+## Use Cases
+
+- ☑ Test **K8s probes, rolling updates, and pod lifecycle**
+- ☑ Validate **Ingress, APISIX routes, and traffic splitting**
+- ☑ Simulate **latency, high CPU, and memory pressure** during load tests
+- ☑ Verify **client IP preservation** through proxies and load balancers
+- ☑ Replace production services for **canary/blue-green testing**
+
+## Framework Comparison
 
 ```bash
-go run main.go
-# 默认端口 8080
+# Start 4 instances on different ports:
+go run . -c echo &                # :8080
+go run . -c gin &                 # :8081  (flag.Parse uses first)
+go run . -c mux &                 # :8082
+go run . -c http &                # :8083
 ```
-
----
-
-## 三、容器化
-
-Dockerfile（多阶段构建，镜像 < 10 MB）
 
 ```bash
-docker build -t kdebug:1.0 .
-docker run -p 8080:8080 kdebug:1.0
+curl -s http://localhost:8080/ping  # echo
+curl -s http://localhost:8081/ping  # gin
+curl -s http://localhost:8082/ping  # mux
+curl -s http://localhost:8083/ping  # stdlib
 ```
 
----
+> All return `{"code":0,"msg":"pong"}`.
 
-## 四、K8s 一键部署
+## Test Commands
 
 ```bash
-kubectl apply -f deployment.yaml
+# Liveness
+curl http://localhost:8080/ping
+
+# Echo
+curl http://localhost:8080/echo -d 'hello=world'
+
+# Client IP
+curl -H 'X-Real-Ip: 1.2.3.4' http://localhost:8080/ip
+
+# Latency: 500ms
+curl http://localhost:8080/delay?ms=500
+
+# Memory: allocate 200MB for 10s
+curl http://localhost:8080/mem?mb=200&ms=10000
+
+# CPU: 2 cores at 80% for 5s
+curl "http://localhost:8080/cpu?ms=5000&cores=2&percent=80"
 ```
 
-| 环境变量 | 来源 | 说明 |
-|---|---|---|
-| `POD_NAME` | Downward API | Pod 名称 |
-| `NODE_NAME` | Downward API | 所在节点 |
-| `VERSION` | 手动注入 | 镜像版本 |
-| `PORT` | 可选 | 监听端口，默认 8080 |
+## License
 
-**健康探针**已内置：`/ping`
+MIT — use freely, no warranty.
 
 ---
 
-## 五、APISIX 路由示例
-
-```yaml
-apiVersion: apisix.apache.org/v2
-kind: ApisixRoute
-metadata:
-  name: demo-route
-spec:
-  http:
-  - name: demo
-    match:
-      hosts: [demo.local]
-      paths: ["/*"]
-    backends:
-    - serviceName: kdebug
-      servicePort: 80
-    plugins:
-    - name: limit-req
-      enable: true
-      config:
-        rate: 100
-        burst: 50
-        key: remote_addr
-```
-
----
-
-## 六、常用测试命令
-
-```bash
-# 探活
-curl http://demo.local/ping
-
-# 回显
-curl http://demo.local/echo -d 'hello=world'
-
-# 真实 IP（经过代理）
-curl -H 'X-Real-Ip: 1.2.3.4' http://demo.local/ip
-
-# 延迟 500ms
-curl http://demo.local/delay?ms=500
-
-# 占 200 MiB 内存
-curl http://demo.local/mem?mb=200
-
-# 占 100 MiB 内存，保持10秒（前5秒缓步提升，后5秒保持）
-curl http://demo.local/mem?mb=100&ms=10000
-
-# CPU测试：使用1个核心，100%占用率，持续3秒
-curl http://demo.local/cpu?ms=3000&cores=1&percent=100
-
-# CPU测试：使用所有核心，50%占用率，持续5秒
-curl http://demo.local/cpu?ms=5000&percent=50
-
-# CPU测试：使用2个核心，80%占用率，持续10秒
-curl http://demo.local/cpu?ms=10000&cores=2&percent=80
-```
-
----
-
-## 七、用途清单
-
-☑ 替代线上业务做**灰度/限流/熔断**测试  
-☑ 验证 **K8s 健康探针**与**滚动发布**  
-☑ 验证 **APISIX** 路由、插件、流量拆分  
-☑ 压测时模拟延迟/内存飙高场景  
-
----
-
-## 八、License
-
-MIT - 随便用，出问题不负责 :)
+> **中文简介**  
+> kdebug 是一个超轻量的 Go HTTP 服务，专为 K8s 和 APISIX 功能验证设计。  
+> 支持 Echo/Gin/Mux/NetHTTP 四种框架、客户端 IP 检测、延迟/内存/CPU 模拟。  
+> Docker 镜像 < 10MB，开箱即用。

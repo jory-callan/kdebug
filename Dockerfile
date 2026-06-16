@@ -1,17 +1,18 @@
-# 构建阶段
+# Build stage
 FROM golang:1.25-alpine AS builder
 WORKDIR /app
 COPY . .
-# RUN go env -w GOPROXY=https://goproxy.cn,direct
 RUN go mod tidy
-RUN go build -ldflags="-s -w" -o demo-go-tiny .
+RUN go build -ldflags="-s -w" -o kdebug .
 
-# 制作镜像阶段
+# Runtime stage
 FROM alpine:3.19
 ENV TZ=Asia/Shanghai
 WORKDIR /app
-RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone && apk add --no-cache ca-certificates
-COPY --from=builder /app/demo-go-tiny /app/demo-go-tiny
+RUN ln -sf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone \
+    && apk add --no-cache ca-certificates
+COPY --from=builder /app/kdebug /app/kdebug
 ENV PORT=8080
-ENTRYPOINT ["/app/demo-go-tiny"]
-CMD ["-c", "gin"]
+EXPOSE 8080
+ENTRYPOINT ["/app/kdebug"]
+CMD ["-c", "echo"]

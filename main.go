@@ -15,7 +15,7 @@ import (
 func main() {
 	// 解析命令行参数
 	var framework string
-	flag.StringVar(&framework, "c", "gin", "Specify web framework: gin, echo, mux, http")
+	flag.StringVar(&framework, "c", "echo", "Web framework: echo, gin, mux, http")
 	flag.Parse()
 
 	// 启动对应的框架服务
