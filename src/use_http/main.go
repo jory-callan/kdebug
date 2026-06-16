@@ -114,10 +114,9 @@ func mem(w http.ResponseWriter, r *http.Request) {
 	// 保持 buf 引用，sleep 期间不释放
 	time.Sleep(time.Duration(durationMs) * time.Millisecond)
 
-	// 手动触发 GC 以确保内存及时释放
-	buf = nil
+	// Release memory
 	runtime.GC()
-	debug.FreeOSMemory() // 强制归还空闲内存给 OS, 禁止在生产环境使用
+	debug.FreeOSMemory()
 
 	// 此时才释放（函数返回自动释放，无需显式 GC）
 	writeJSON(w, http.StatusOK, resp{

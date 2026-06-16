@@ -148,8 +148,7 @@ func memHandler(w http.ResponseWriter, r *http.Request) {
 	// 保持内存占用
 	time.Sleep(time.Duration(durationMs) * time.Millisecond)
 
-	// 释放内存
-	buf = nil
+	// Release memory
 	runtime.GC()
 	debug.FreeOSMemory()
 

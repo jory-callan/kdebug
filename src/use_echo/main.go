@@ -32,7 +32,12 @@ func StartServer() {
 	e := echo.New()
 
 	// 中间件
-	e.Use(middleware.Logger())
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogURI:    true,
+		LogStatus: true,
+		LogMethod: true,
+		LogError:  true,
+	}))
 	e.Use(middleware.Recover())
 
 	// 注册路由
@@ -146,7 +151,6 @@ func memHandler(c echo.Context) error {
 	time.Sleep(time.Duration(durationMs) * time.Millisecond)
 
 	// 释放内存
-	buf = nil
 	runtime.GC()
 	debug.FreeOSMemory()
 
@@ -200,7 +204,7 @@ func cpuHandler(c echo.Context) error {
 	// 异步等待完成
 	go func() {
 		wg.Wait()
-		c.JSON(http.StatusOK, resp{Code: 0, Msg: fmt.Sprintf("CPU test completed: %d core(s) at %d%% for %s", cores, percent, duration)})
+		_ = c.JSON(http.StatusOK, resp{Code: 0, Msg: fmt.Sprintf("CPU test completed: %d core(s) at %d%% for %s", cores, percent, duration)})
 	}()
 
 	return c.NoContent(http.StatusAccepted)

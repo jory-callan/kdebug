@@ -107,8 +107,7 @@ func StartServer() {
 		// 保持 buf 引用，sleep 期间不释放
 		time.Sleep(time.Duration(durationMs) * time.Millisecond)
 
-		// 手动触发 GC 以确保内存及时释放
-		buf = nil
+		// Release memory
 		runtime.GC()
 		debug.FreeOSMemory()
 
