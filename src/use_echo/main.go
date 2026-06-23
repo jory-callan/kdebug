@@ -37,6 +37,10 @@ func StartServer() {
 		LogStatus: true,
 		LogMethod: true,
 		LogError:  true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			log.Printf("REQUEST: %s %s | %d", v.Method, v.URI, v.Status)
+			return nil
+		},
 	}))
 	e.Use(middleware.Recover())
 
