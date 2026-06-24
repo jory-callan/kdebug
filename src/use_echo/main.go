@@ -1,6 +1,7 @@
 package use_echo
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -17,6 +18,22 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
+
+// jsonSerializer 不转义 HTML（& < >）的 JSON 序列化器
+type jsonSerializer struct{}
+
+func (s *jsonSerializer) Serialize(c echo.Context, i interface{}, indent string) error {
+	enc := json.NewEncoder(c.Response())
+	enc.SetEscapeHTML(false)
+	if indent != "" {
+		enc.SetIndent("", indent)
+	}
+	return enc.Encode(i)
+}
+
+func (s *jsonSerializer) Deserialize(c echo.Context, i interface{}) error {
+	return json.NewDecoder(c.Request().Body).Decode(i)
+}
 
 // 统一 JSON 返回结构
 type resp struct {
@@ -43,6 +60,9 @@ func StartServer() {
 		},
 	}))
 	e.Use(middleware.Recover())
+
+	// 覆盖默认 JSON 序列化器，关闭 HTML 转义
+	e.JSONSerializer = &jsonSerializer{}
 
 	// 注册路由
 	registerRoutes(e)
